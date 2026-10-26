@@ -150,6 +150,15 @@ body {
   opacity: 0; transform: scale(.8);
 }
 .toast.show { animation: pop 900ms cubic-bezier(.2,1.4,.4,1) forwards; }
+.gain {
+  position: absolute; left: 0; right: 0; text-align: center; pointer-events: none;
+  font-family: var(--f-num); font-weight: 700; font-size: clamp(22px, 5.5vmin, 36px); font-variant-numeric: tabular-nums;
+  color: var(--text); text-shadow: 0 2px 0 rgba(0,0,0,.45), 0 0 14px rgba(236,230,218,.25);
+  opacity: 0;
+}
+.gain.big { color: var(--champagne); font-size: clamp(28px, 7vmin, 46px); text-shadow: 0 2px 0 rgba(0,0,0,.45), 0 0 22px rgba(207,182,130,.45); }
+.gain.show { animation: rise 1000ms cubic-bezier(.2,.9,.3,1) forwards; }
+@keyframes rise { 0% { opacity: 0; transform: translateY(6px) scale(.8) } 15% { opacity: 1; transform: translateY(0) scale(1.08) } 60% { opacity: 1; transform: translateY(-18px) scale(1) } 100% { opacity: 0; transform: translateY(-40px) scale(1) } }
 @keyframes pop { 0% { opacity: 0; transform: scale(.7) } 18% { opacity: 1; transform: scale(1.06) } 70% { opacity: 1; transform: scale(1) } 100% { opacity: 0; transform: translateY(-14px) scale(1) } }
 
 /* pads */
@@ -165,7 +174,32 @@ body {
   .cluster.act { grid-area: act; }
   .cluster { align-self: end; justify-self: center; margin-bottom: 8px; }
 }
+/* focus mode: no on-screen pads, the well takes the room */
+.focus .pad, .focus .cluster { display: none; }
+.focus .app { grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "top" "stage"; }
+@media (orientation: landscape) and (min-width: 820px) {
+  .focus .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "stage"; }
+  .focus .stage { max-width: 760px; width: 100%; justify-self: center; }
+}
+/* focus mode on phones: stats become a strip above a full-width well */
+@media (max-width: 600px) {
+  .focus .stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "l r" "slot slot"; gap: 8px; }
+  .focus .side.left { grid-area: l; }
+  .focus .side.right { grid-area: r; }
+  .focus .slot { grid-area: slot; }
+  .focus .side { flex-direction: row; gap: 6px; }
+  .focus .side .card { flex: 1 1 0; min-width: 0; padding: 6px 8px; border-radius: 12px; }
+  .focus .side .c-score { flex-grow: 1.7; }
+  .focus .side .c-best { display: none; }
+  .focus .side .lbl b { display: none; }
+  .focus .side .num { font-size: 15px; margin-top: 2px; overflow-wrap: normal; white-space: nowrap; }
+  .focus .mini { margin-top: 2px; }
+}
 @media (max-width: 460px) {
+  .tools { gap: 8px; }
+  .key.round { width: 40px; height: 40px; border-radius: 12px; }
+  .wordmark { display: none; }
   .stage { grid-template-columns: 66px minmax(0, 1fr) 66px; gap: 8px; }
   .card { padding: 8px; border-radius: 14px; }
   .wordmark { font-size: 22px; }
@@ -185,20 +219,23 @@ body {
     <div class="tools">
       <button class="key round" id="btnMusic" aria-label="背景音乐"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></button>
       <button class="key round" id="btnSfx" aria-label="音效"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg></button>
+      <button class="key round" id="btnHaptic" aria-label="震动"><svg viewBox="0 0 24 24"><rect x="8" y="4" width="8" height="16" rx="2"/><path d="M4.5 9v6M19.5 9v6"/></svg></button>
+      <button class="key round" id="btnFocus" aria-label="全屏模式"><svg viewBox="0 0 24 24"><path id="focusIcon" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       <button class="key round" id="btnPause" aria-label="暂停"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg></button>
     </div>
   </header>
 
   <main class="stage">
-    <aside class="side">
-      <div class="card"><div class="lbl">暂存 <b>HOLD</b></div><canvas class="mini" id="hold"></canvas></div>
-      <div class="card"><div class="lbl">分数 <b>SCORE</b></div><div class="num" id="score">0</div></div>
-      <div class="card"><div class="lbl">最佳 <b>BEST</b></div><div class="num small" id="best">0</div></div>
+    <aside class="side left">
+      <div class="card c-hold"><div class="lbl">暂存 <b>HOLD</b></div><canvas class="mini" id="hold"></canvas></div>
+      <div class="card c-score"><div class="lbl">分数 <b>SCORE</b></div><div class="num" id="score">0</div></div>
+      <div class="card c-best"><div class="lbl">最佳 <b>BEST</b></div><div class="num small" id="best">0</div></div>
     </aside>
     <div class="slot" id="slot">
       <div class="well" id="well">
         <canvas id="board"></canvas>
         <div class="toast" id="toast"></div>
+        <div class="gain" id="gain"></div>
         <div class="overlay" id="overlay">
           <div class="ov-inner">
             <h2 class="ov-title" id="ovTitle">金石方块</h2>
@@ -209,8 +246,8 @@ body {
         </div>
       </div>
     </div>
-    <aside class="side">
-      <div class="card"><div class="lbl">下一个 <b>NEXT</b></div><canvas class="mini" id="next"></canvas></div>
+    <aside class="side right">
+      <div class="card c-next"><div class="lbl">下一个 <b>NEXT</b></div><canvas class="mini" id="next"></canvas></div>
       <div class="card"><div class="lbl">等级 <b>LV</b></div><div class="num" id="level">1</div></div>
       <div class="card"><div class="lbl">行数 <b>LINES</b></div><div class="num small" id="lines">0</div></div>
     </aside>
@@ -380,6 +417,37 @@ const Sound = (() => {
   };
 })();
 
+/* ================= Haptics ================= */
+// Android: Vibration API. iPhone (iOS 18+): toggling a hidden native switch plays the system haptic tick.
+const ui = store.get("jinshi:ui", { haptic: true, focus: false });
+const Haptic = (() => {
+  const vib = typeof navigator.vibrate === "function";
+  let label = null, last = 0;
+  function ensure() {
+    if (label) return;
+    const inp = document.createElement("input");
+    inp.type = "checkbox"; inp.setAttribute("switch", ""); inp.id = "hapticSwitch"; inp.tabIndex = -1;
+    label = document.createElement("label");
+    label.htmlFor = "hapticSwitch"; label.setAttribute("aria-hidden", "true");
+    label.style.cssText = "position:fixed;left:-200px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden";
+    label.append(inp); document.body.append(label);
+  }
+  function pulse(ms = 12) {
+    if (!ui.haptic) return;
+    const t = performance.now(); if (t - last < 35) return; last = t;
+    if (vib) { try { navigator.vibrate(ms); } catch {} return; }
+    ensure(); label.click();
+  }
+  const seq = (n, gap, ms) => { for (let i = 0; i < n; i++) setTimeout(() => { last = 0; pulse(ms); }, i * gap); };
+  return {
+    tap: () => pulse(8),
+    thud: () => seq(2, 55, 18),
+    clear: n => seq(n === 4 ? 5 : n, 70, 14),
+    level: () => seq(3, 90, 14),
+    over: () => seq(3, 220, 30)
+  };
+})();
+
 /* ================= Pieces ================= */
 const COLS = 10, ROWS = 22, HIDDEN = 2;
 const COLORS = { I: "#6fa6a8", O: "#c7a96f", T: "#9b84b4", S: "#80ad87", Z: "#c27564", J: "#6f84b9", L: "#c48e5f" };
@@ -447,14 +515,14 @@ function move(dx) {
   if (G.state !== "play") return false;
   const c = G.cur;
   if (collide(c.type, c.r, c.x + dx, c.y)) return false;
-  c.x += dx; afterShift(); Sound.move(); return true;
+  c.x += dx; afterShift(); Sound.move(); Haptic.tap(); return true;
 }
 function rotate(dir) {
   if (G.state !== "play") return;
   const c = G.cur; if (c.type === "O") { Sound.rotate(); return; }
   const to = (c.r + dir + 4) % 4, kicks = (c.type === "I" ? K_I : K_JLSTZ)[c.r + ">" + to];
   for (const [kx, ky] of kicks) {
-    if (!collide(c.type, to, c.x + kx, c.y - ky)) { c.x += kx; c.y -= ky; c.r = to; afterShift(); Sound.rotate(); return; }
+    if (!collide(c.type, to, c.x + kx, c.y - ky)) { c.x += kx; c.y -= ky; c.r = to; afterShift(); Sound.rotate(); Haptic.tap(); return; }
   }
 }
 function softStep() {
@@ -466,13 +534,13 @@ function dropDist() { let d = 0; while (!collide(G.cur.type, G.cur.r, G.cur.x, G
 function hardDrop() {
   if (G.state !== "play") return;
   const d = dropDist(); G.cur.y += d; G.score += d * 2;
-  Sound.hard(); if (!reduceMotion) G.shake = 5;
+  Sound.hard(); Haptic.thud(); if (!reduceMotion) G.shake = 5;
   lock(true);
 }
 function holdPiece() {
   if (G.state !== "play" || !G.canHold) return;
   const t = G.cur.type;
-  G.canHold = false; Sound.hold();
+  G.canHold = false; Sound.hold(); Haptic.tap();
   if (G.hold) { const h = G.hold; G.hold = t; spawn(h); } else { G.hold = t; spawn(nextType()); }
   G.canHold = false; drawMini();
 }
@@ -483,7 +551,7 @@ function lock(silent) {
     if (by >= 0) G.board[by][c.x + cx] = c.type;
     if (by >= HIDDEN) above = false;
   }
-  if (!silent) Sound.lock();
+  if (!silent) { Sound.lock(); Haptic.tap(); }
   G.cur = null; G.canHold = true;
   if (above) return gameOver();
   const full = [];
@@ -496,12 +564,14 @@ function lock(silent) {
     G.b2b = n === 4;
     pts += Math.max(0, G.combo) * 50 * G.level;
     G.score += Math.round(pts);
+    gainPopup(Math.round(pts), full, n);
+    Haptic.clear(n);
     const oldLv = G.level;
     G.lines += n; G.level = Math.floor(G.lines / 10) + 1;
     Sound.clear(n);
     const names = ["", "单消", "双消", "三消", "金石四消"];
     let msg = names[n]; if (G.combo > 0) msg += " · 连击" + G.combo;
-    if (G.level > oldLv) { Sound.levelUp(); Sound.setTempo(G.level); msg = n === 4 ? msg : "等级 " + G.level; }
+    if (G.level > oldLv) { Sound.levelUp(); setTimeout(Haptic.level, 420); Sound.setTempo(G.level); msg = n === 4 ? msg : "等级 " + G.level; }
     toast(msg);
     G.clearing = { rows: full, t: 0 }; G.state = "clear";
   } else { G.combo = -1; spawn(nextType()); }
@@ -603,8 +673,9 @@ function resize() {
     boardC.width = cell * COLS * dpr; boardC.height = cell * (ROWS - HIDDEN) * dpr;
     makeBg();
   }
-  for (const [c, rowsH] of [[holdC, 2.6], [nextC, 8.4]]) {
-    const w = c.clientWidth || 80; const mc = Math.min(w / 4.6, cell * 0.8);
+  const strip = document.body.classList.contains("focus") && innerWidth <= 600;
+  for (const [c, rowsH] of [[holdC, 2.6], [nextC, strip ? 2.6 : 8.4]]) {
+    const w = c.clientWidth || 80; const mc = Math.min(w / 4.6, cell * 0.8, strip ? 9 : 99);
     c.width = w * dpr; c.height = mc * rowsH * dpr; c.style.height = mc * rowsH + "px"; c._mc = mc;
   }
   drawMini();
@@ -656,13 +727,23 @@ function drawMini() {
   const hm = holdC._mc || 16, nm = nextC._mc || 16;
   if (G.hold) drawPieceIn(holdC.getContext("2d"), G.hold, holdC.width / dpr / 2, hm * 1.3, hm);
   holdC.classList.toggle("dim", !G.canHold);
-  G.queue.slice(0, 3).forEach((t, i) => drawPieceIn(nextC.getContext("2d"), t, nextC.width / dpr / 2, nm * (1.3 + i * 2.9), nm * (i ? 0.85 : 1)));
+  const shown = nextC.height / dpr < (nextC._mc || 16) * 4 ? 1 : 3;
+  G.queue.slice(0, shown).forEach((t, i) => drawPieceIn(nextC.getContext("2d"), t, nextC.width / dpr / 2, nm * (1.3 + i * 2.9), nm * (i ? 0.85 : 1)));
 }
 function hud() {
   $("score").textContent = G.score.toLocaleString();
   $("level").textContent = G.level;
   $("lines").textContent = G.lines;
   $("best").textContent = Math.max(G.best, G.score).toLocaleString();
+}
+let gainTimer;
+function gainPopup(pts, rows, n) {
+  const el = $("gain"), mid = rows.reduce((a, y) => a + y, 0) / rows.length - HIDDEN + 0.5;
+  el.textContent = "+" + pts.toLocaleString();
+  el.style.top = Math.max(0, 6 + mid * cell - cell * 0.9) + "px";
+  el.classList.toggle("big", n === 4 || G.combo > 0);
+  el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+  clearTimeout(gainTimer); gainTimer = setTimeout(() => el.classList.remove("show"), 1050);
 }
 let toastTimer;
 function toast(msg) {
@@ -686,7 +767,7 @@ function pause() {
 }
 function resume() { Sound.init(); G.state = G.resume || "play"; overlay.hidden = true; Sound.startMusic(); }
 function gameOver() {
-  G.state = "over"; Sound.stopMusic(); Sound.over(); releaseAll();
+  G.state = "over"; Sound.stopMusic(); Sound.over(); Haptic.over(); releaseAll();
   const rec = G.score > G.best; if (rec) { G.best = G.score; store.set("jinshi:best", G.best); }
   hud();
   showOverlay(rec ? "新纪录" : "游戏结束",
@@ -694,7 +775,24 @@ function gameOver() {
 }
 $("ovBtn").addEventListener("click", () => { if (G.state === "pause") resume(); else start(); });
 $("btnPause").addEventListener("click", () => { Sound.ui(); G.state === "pause" ? resume() : pause(); });
-const syncToggles = () => { $("btnMusic").classList.toggle("off", !Sound.prefs.music); $("btnSfx").classList.toggle("off", !Sound.prefs.sfx); };
+const syncToggles = () => {
+  $("btnMusic").classList.toggle("off", !Sound.prefs.music); $("btnSfx").classList.toggle("off", !Sound.prefs.sfx);
+  $("btnHaptic").classList.toggle("off", !ui.haptic);
+  document.body.classList.toggle("focus", ui.focus);
+  $("focusIcon").setAttribute("d", ui.focus ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5");
+  $("btnFocus").setAttribute("aria-label", ui.focus ? "退出全屏模式" : "全屏模式");
+};
+$("btnHaptic").addEventListener("click", () => { ui.haptic = !ui.haptic; store.set("jinshi:ui", ui); syncToggles(); Haptic.tap(); Sound.ui(); });
+$("btnFocus").addEventListener("click", () => {
+  ui.focus = !ui.focus; store.set("jinshi:ui", ui); syncToggles(); Sound.ui(); Haptic.tap();
+  const de = document.documentElement, standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  try {
+    if (ui.focus && !standalone && de.requestFullscreen && !document.fullscreenElement) de.requestFullscreen().catch(() => {});
+    else if (!ui.focus && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  } catch {}
+  if (ui.focus) toast("点按旋转 · 拖动移动");
+  requestAnimationFrame(resize);
+});
 $("btnMusic").addEventListener("click", () => { Sound.init(); const on = Sound.toggleMusic(); if (on && G.state === "play") Sound.startMusic(); syncToggles(); });
 $("btnSfx").addEventListener("click", () => { Sound.init(); Sound.toggleSfx(); Sound.ui(); syncToggles(); });
 syncToggles();
@@ -740,14 +838,15 @@ addEventListener("keydown", e => {
 addEventListener("keyup", e => { const act = KEYMAP[e.code]; if (act && ACTIONS[act].up) ACTIONS[act].up(); });
 document.addEventListener("gesturestart", e => e.preventDefault());
 
-/* ================= Input: gestures on the well ================= */
+/* ================= Input: gestures on the stage ================= */
 let gs = null;
-wellEl.addEventListener("pointerdown", e => {
+const stageEl = document.querySelector(".stage");
+stageEl.addEventListener("pointerdown", e => {
   if (G.state !== "play" || !overlay.hidden) return;
   gs = { id: e.pointerId, x0: e.clientX, y0: e.clientY, ax: e.clientX, ay: e.clientY, t0: performance.now(), axis: null, moved: false };
-  wellEl.setPointerCapture(e.pointerId);
+  try { stageEl.setPointerCapture(e.pointerId); } catch {}
 });
-wellEl.addEventListener("pointermove", e => {
+stageEl.addEventListener("pointermove", e => {
   if (!gs || e.pointerId !== gs.id) return;
   const tx = e.clientX - gs.x0, ty = e.clientY - gs.y0, step = cell * 0.9;
   if (!gs.axis && (Math.abs(tx) > 10 || Math.abs(ty) > 10)) gs.axis = Math.abs(tx) > Math.abs(ty) ? "h" : "v";
@@ -770,8 +869,8 @@ const endGesture = e => {
   }
   gs = null;
 };
-wellEl.addEventListener("pointerup", endGesture);
-wellEl.addEventListener("pointercancel", endGesture);
+stageEl.addEventListener("pointerup", endGesture);
+stageEl.addEventListener("pointercancel", endGesture);
 
 /* ================= Boot ================= */
 G.board = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
