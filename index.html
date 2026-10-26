@@ -44,6 +44,7 @@ body { margin: 0; font-size: 14px; position: fixed; inset: 0; }
   color-scheme: dark;
 }
 [hidden] { display: none !important; }
+html, body, .app, .app * { touch-action: none; }
 html { height: 100%; }
 html, body { overflow: hidden; overscroll-behavior: none; }
 body {
@@ -631,7 +632,7 @@ function update(dt) {
 const $ = id => document.getElementById(id);
 const boardC = $("board"), bctx = boardC.getContext("2d");
 const holdC = $("hold"), nextC = $("next");
-let cell = 24, dpr = 1, tiles = {}, bgCanvas = null;
+let cell = 24, dpr = 1, tiles = {}, bgCanvas = null, blurC = null;
 
 function rr(x, px, py, w, h, r) { x.beginPath(); x.moveTo(px + r, py); x.arcTo(px + w, py, px + w, py + h, r); x.arcTo(px + w, py + h, px, py + h, r); x.arcTo(px, py + h, px, py, r); x.arcTo(px, py, px + w, py, r); x.closePath(); }
 function mix(hex, t) {
@@ -677,8 +678,8 @@ function makeGlass(color, px) {
   const rgba = a => `rgba(${R},${G},${B},${a})`;
   x.save(); rr(x, g, g, s, s, r); x.clip();
   const body = x.createLinearGradient(0, g, 0, g + s);
-  x.fillStyle = "rgba(255,255,255,.16)"; x.fillRect(0, 0, px, px);
-  body.addColorStop(0, rgba(0.92)); body.addColorStop(0.55, rgba(0.7)); body.addColorStop(1, rgba(0.82));
+  x.fillStyle = "rgba(255,255,255,.05)"; x.fillRect(0, 0, px, px);
+  body.addColorStop(0, rgba(0.66)); body.addColorStop(0.55, rgba(0.4)); body.addColorStop(1, rgba(0.56));
   x.fillStyle = body; x.fillRect(0, 0, px, px);
   const glow = x.createRadialGradient(px / 2, g + s * 0.95, 0, px / 2, g + s * 0.95, s * 0.7);
   glow.addColorStop(0, "rgba(255,255,255,.4)"); glow.addColorStop(1, "rgba(255,255,255,0)");
@@ -708,10 +709,38 @@ function makeBg() {
   const x = bgCanvas.getContext("2d"); x.scale(dpr, dpr);
   const lg = x.createLinearGradient(0, 0, 0, h); lg.addColorStop(0, "#1c1b28"); lg.addColorStop(1, "#14131d");
   x.fillStyle = lg; x.fillRect(0, 0, w, h);
+  if (ui.theme === "glass") {
+    // soft pastel light behind the glass so the blocks have something to bend
+    [[0.18, 0.2, "166,221,224"], [0.85, 0.32, "205,188,236"], [0.3, 0.62, "243,185,174"], [0.78, 0.8, "183,228,192"], [0.5, 0.45, "173,195,241"], [0.15, 0.95, "246,203,164"]]
+      .forEach(([fx, fy, rgb]) => {
+        const rg = x.createRadialGradient(fx * w, fy * h, 0, fx * w, fy * h, w * 0.55);
+        rg.addColorStop(0, `rgba(${rgb},.34)`); rg.addColorStop(1, `rgba(${rgb},0)`);
+        x.fillStyle = rg; x.fillRect(0, 0, w, h);
+      });
+  }
   x.fillStyle = "rgba(255,255,255,.06)";
   for (let gy = 1; gy < ROWS - HIDDEN; gy++) for (let gx = 1; gx < COLS; gx++) { x.beginPath(); x.arc(gx * cell, gy * cell, Math.max(0.8, cell * 0.04), 0, 7); x.fill(); }
   const vg = x.createLinearGradient(0, 0, 0, cell * 2); vg.addColorStop(0, "rgba(0,0,0,.35)"); vg.addColorStop(1, "rgba(0,0,0,0)");
   x.fillStyle = vg; x.fillRect(0, 0, w, cell * 2);
+  // cheap blur: shrink twice, then let drawImage scale it back up smoothly
+  const mid = document.createElement("canvas"); mid.width = Math.max(1, bgCanvas.width / 4 | 0); mid.height = Math.max(1, bgCanvas.height / 4 | 0);
+  mid.getContext("2d").drawImage(bgCanvas, 0, 0, mid.width, mid.height);
+  blurC = document.createElement("canvas"); blurC.width = Math.max(1, mid.width / 3 | 0); blurC.height = Math.max(1, mid.height / 3 | 0);
+  blurC.getContext("2d").drawImage(mid, 0, 0, blurC.width, blurC.height);
+}
+// one board cell; glass shows a magnified, blurred view of the board behind it
+function drawCell(x, type, px, py, size) {
+  if (ui.theme === "glass" && blurC) {
+    const k = blurC.width / (cell * COLS), m = size * 0.16;
+    const sw = (size - 2 * m) * k;
+    const sx = Math.min(Math.max(0, (px + m) * k), blurC.width - sw);
+    const sy = Math.min(Math.max(0, (py + m + size * 0.08) * k), blurC.height - sw);
+    const g = size * 0.045;
+    x.save(); rr(x, px + g, py + g, size - 2 * g, size - 2 * g, (size - 2 * g) * 0.22); x.clip();
+    x.drawImage(blurC, sx, sy, sw, sw, px, py, size, size);
+    x.restore();
+  }
+  x.drawImage(tile(type, size), px, py, size, size);
 }
 function resize() {
   const slot = $("slot"), pad = 12;
@@ -742,7 +771,7 @@ function draw() {
     const row = G.board[y]; if (!row) continue;
     const isClr = clr && clr.has(y);
     if (isClr) x.globalAlpha = 1 - p;
-    for (let c = 0; c < COLS; c++) if (row[c]) x.drawImage(tile(row[c], cell), c * cell, (y - HIDDEN) * cell, cell, cell);
+    for (let c = 0; c < COLS; c++) if (row[c]) drawCell(x, row[c], c * cell, (y - HIDDEN) * cell, cell);
     x.globalAlpha = 1;
     if (isClr) {
       const a = Math.sin(p * Math.PI) * 0.55;
@@ -759,10 +788,9 @@ function draw() {
       const g = cell * 0.1; rr(x, (c.x + cx) * cell + g, gy * cell + g, cell - 2 * g, cell - 2 * g, cell * 0.18); x.stroke();
     }
     x.restore();
-    const t = tile(c.type, cell);
     for (const [cx, cy] of CELLS[c.type][c.r]) {
       const py = c.y + cy - HIDDEN; if (py < 0) continue;
-      x.drawImage(t, (c.x + cx) * cell, py * cell, cell, cell);
+      drawCell(x, c.type, (c.x + cx) * cell, py * cell, cell);
     }
   }
   if (G.shake > 0.1) { wellEl.style.transform = `translateY(${G.shake.toFixed(1)}px)`; G.shake *= 0.72; }
@@ -840,7 +868,7 @@ function syncTheme() {
 document.querySelectorAll(".seg-btn").forEach(b => b.addEventListener("click", () => {
   if ((ui.theme || "metal") === b.dataset.theme) return;
   ui.theme = b.dataset.theme; store.set("jinshi:ui", ui);
-  syncTheme(); drawMini(); Sound.ui(); Haptic.tap();
+  syncTheme(); makeBg(); drawMini(); Sound.ui(); Haptic.tap();
 }));
 syncTheme();
 $("btnHaptic").addEventListener("click", () => { ui.haptic = !ui.haptic; store.set("jinshi:ui", ui); syncToggles(); Haptic.tap(); Sound.ui(); });
@@ -897,7 +925,16 @@ addEventListener("keydown", e => {
   ACTIONS[act].down();
 });
 addEventListener("keyup", e => { const act = KEYMAP[e.code]; if (act && ACTIONS[act].up) ACTIONS[act].up(); });
-document.addEventListener("gesturestart", e => e.preventDefault());
+// iOS ignores user-scalable=no: swallow quick second taps and pinch gestures so the page never zooms
+["gesturestart", "gesturechange", "gestureend"].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+let lastTouchEnd = 0;
+document.addEventListener("touchend", e => {
+  const now = performance.now();
+  if (now - lastTouchEnd < 350 && !e.target.closest(".ov-btn, .seg-btn")) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+document.addEventListener("touchmove", e => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) e.preventDefault(); }, { passive: false });
+document.addEventListener("dblclick", e => e.preventDefault(), { passive: false });
 
 /* ================= Input: gestures on the stage ================= */
 let gs = null;
