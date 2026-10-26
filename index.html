@@ -81,35 +81,136 @@ body {
 .wordmark small { display: block; font-family: var(--f-body); font-size: 10px; letter-spacing: .22em; color: var(--muted); margin-top: -2px; }
 .tools { display: flex; gap: 10px; }
 
-/* chunky keys */
+/* ===== Buttons: tactile neutral keys, lit from straight above =====
+   Variants (existing classes kept as the API):
+     .key.seal-key = primary   .key.metal = secondary   .key = tertiary
+     .key.round    = ghost     .key.text  = text
+   Sizes: md (default, 14px label, u = 1px) and .key.lg (16px label, u = 16/14 px).
+   Every length is a multiple of --u. Filled variants share five material layers;
+   each variant only sets the values. */
+@property --_ft { syntax: "<color>"; inherits: false; initial-value: transparent; }
+@property --_fb { syntax: "<color>"; inherits: false; initial-value: transparent; }
 .key {
-  appearance: none; border: 0; cursor: pointer; color: var(--text);
-  font: 600 13px var(--f-body); letter-spacing: .06em;
-  border-radius: 20px;
-  background: linear-gradient(180deg, var(--key-top), var(--key-bot));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -2px 0 rgba(0,0,0,.25), 0 5px 0 var(--key-edge), 0 10px 18px rgba(0,0,0,.4);
-  display: grid; place-items: center; gap: 2px;
-  transition: transform 70ms ease, box-shadow 70ms ease;
+  --u: 1px;
+  /* material values (tertiary by default) */
+  --face-top: #F3F4F6;  --face-bot: #E7E9EC;
+  --face-top-h: #F7F8F9; --face-bot-h: #EDEEF1;
+  --edge: rgba(15,23,42,.10);
+  --hi: rgba(255,255,255,.85);
+  --shade: rgba(0,0,0,.06);
+  --contact: rgba(15,23,42,.06);
+  --lift: rgba(15,23,42,.09);
+  --press-in: rgba(15,23,42,.13);
+  --press-line: rgba(255,255,255,.9);
+  --label: #30343C;
+  --label-h: #30343C;
+  --label-shadow: none;
+  /* current face, animated through @property */
+  --_ft: var(--face-top); --_fb: var(--face-bot);
+
+  appearance: none; cursor: pointer; position: relative; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center; gap: calc(8 * var(--u));
+  height: calc(40 * var(--u)); padding: 0 calc(18 * var(--u));
+  border: calc(1 * var(--u)) solid var(--edge); border-radius: calc(10 * var(--u));
+  font: 600 calc(14 * var(--u)) / 1 var(--f-body); letter-spacing: .02em;
+  color: var(--label); text-shadow: var(--label-shadow);
+  background: linear-gradient(180deg, var(--_ft), var(--_fb));
+  box-shadow:
+    inset 0 calc(1 * var(--u)) 0 var(--hi),
+    inset 0 calc(-1 * var(--u)) 0 var(--shade),
+    0 calc(1 * var(--u)) calc(2 * var(--u)) var(--contact),
+    0 calc(4 * var(--u)) calc(10 * var(--u)) calc(-3 * var(--u)) var(--lift);
+  transition: transform 120ms ease, box-shadow 140ms ease,
+    color 160ms ease, border-color 160ms ease, background-color 160ms ease, --_ft 160ms ease, --_fb 160ms ease;
   touch-action: none; -webkit-tap-highlight-color: transparent;
-  position: relative;
 }
-.key svg { width: 44%; height: 44%; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.key.lg { --u: calc(16px / 14); }
+.key svg { width: calc(16 * var(--u)); height: calc(16 * var(--u)); flex: none;
+  fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+@media (hover: hover) {
+  .key:hover {
+    --_ft: var(--face-top-h); --_fb: var(--face-bot-h); color: var(--label-h);
+    box-shadow:
+      inset 0 calc(1 * var(--u)) 0 var(--hi),
+      inset 0 calc(-1 * var(--u)) 0 var(--shade),
+      0 calc(1 * var(--u)) calc(2 * var(--u)) var(--contact),
+      0 calc(8 * var(--u)) calc(16 * var(--u)) calc(-5 * var(--u)) var(--lift);
+  }
+}
+/* pressed: gradient flips, highlight turns into an inner shadow, the drop collapses */
 .key:active, .key.down {
-  transform: translateY(4px);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.1), inset 0 -1px 0 rgba(0,0,0,.25), 0 1px 0 var(--key-edge), 0 3px 8px rgba(0,0,0,.4);
+  transform: translateY(calc(1 * var(--u)));
+  --_ft: var(--face-bot); --_fb: var(--face-top);
+  box-shadow:
+    inset 0 calc(1 * var(--u)) calc(2 * var(--u)) var(--press-in),
+    inset 0 0 0 transparent,
+    0 calc(1 * var(--u)) 0 var(--press-line),
+    0 calc(1 * var(--u)) calc(1 * var(--u)) var(--contact);
 }
 .key:focus-visible { outline: 2px solid var(--champagne); outline-offset: 3px; }
-.key.metal { color: #2b2216; background: linear-gradient(180deg, #dcc797, var(--champagne) 45%, #a98c58);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -2px 0 rgba(0,0,0,.18), 0 5px 0 var(--champagne-deep), 0 10px 18px rgba(0,0,0,.4); }
-.key.metal:active, .key.metal.down { box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 1px 0 var(--champagne-deep), 0 3px 8px rgba(0,0,0,.4); }
-.key.seal-key { color: #fdeee4; background: linear-gradient(180deg, #d77259, var(--seal) 50%, #a3412d);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), inset 0 -2px 0 rgba(0,0,0,.2), 0 5px 0 var(--seal-deep), 0 10px 18px rgba(0,0,0,.4); }
-.key.seal-key:active, .key.seal-key.down { box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 1px 0 var(--seal-deep), 0 3px 8px rgba(0,0,0,.4); }
-.key.round { width: 44px; height: 44px; border-radius: 14px; box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 4px 0 var(--key-edge), 0 8px 14px rgba(0,0,0,.35); }
-.key.round svg { width: 52%; height: 52%; stroke-width: 2.2; }
-.key.round.off { color: var(--muted); }
-.key.round.off::after { content: ""; position: absolute; width: 60%; height: 2.5px; border-radius: 2px; background: var(--seal); transform: rotate(-40deg); }
-.key .cap { font-size: 11px; letter-spacing: .14em; }
+.key:disabled, .key[aria-disabled="true"] { opacity: .35; cursor: default; pointer-events: none; }
+
+/* primary: near-black slate */
+.key.seal-key {
+  --face-top: #404859; --face-bot: #273042;
+  --face-top-h: #4A5366; --face-bot-h: #2F394C;
+  --edge: #12161F;
+  --hi: rgba(255,255,255,.18);
+  --shade: rgba(0,0,0,.22);
+  --contact: rgba(0,0,0,.18);
+  --lift: rgba(0,0,0,.28);
+  --press-in: rgba(0,0,0,.40);
+  --press-line: transparent;
+  --label: #FFFFFF; --label-h: #FFFFFF;
+  --label-shadow: 0 calc(-1 * var(--u)) 0 rgba(0,0,0,.28);
+}
+/* secondary: raised white key */
+.key.metal {
+  --face-top: #FFFFFF; --face-bot: #F4F5F7;
+  --face-top-h: #FFFFFF; --face-bot-h: #F8F9FA;
+  --edge: rgba(15,23,42,.14);
+  --hi: rgba(255,255,255,1);
+  --press-in: rgba(15,23,42,.15);
+}
+/* ghost: no face at rest, faint fill on hover, a recessed well when pressed */
+.key.round {
+  --_ft: transparent; --_fb: transparent;
+  --face-top-h: rgba(255,255,255,.06); --face-bot-h: rgba(255,255,255,.06);
+  --edge: transparent; --hi: transparent; --shade: transparent; --contact: transparent; --lift: transparent;
+  --label: var(--muted); --label-h: var(--text);
+  width: calc(40 * var(--u)); padding: 0;
+}
+@media (hover: hover) { .key.round:hover { --_ft: var(--face-top-h); --_fb: var(--face-bot-h); } }
+.key.round:active, .key.round.down {
+  transform: none;
+  --_ft: rgba(0,0,0,.24); --_fb: rgba(0,0,0,.18);
+  border-color: rgba(0,0,0,.28); color: var(--text);
+  box-shadow:
+    inset 0 calc(1 * var(--u)) calc(2 * var(--u)) rgba(0,0,0,.4),
+    inset 0 0 0 transparent,
+    0 calc(1 * var(--u)) 0 rgba(255,255,255,.05),
+    0 0 0 transparent;
+}
+.key.round.off { color: var(--muted); opacity: .6; }
+.key.round.off::after { content: ""; position: absolute; width: 56%; height: calc(1.5 * var(--u)); border-radius: 1px; background: currentColor; transform: rotate(-40deg); }
+/* text: label, thin underline, an arrow that nudges right */
+.key.text {
+  --_ft: transparent; --_fb: transparent; --face-top-h: transparent; --face-bot-h: transparent;
+  --edge: transparent; --hi: transparent; --shade: transparent; --contact: transparent; --lift: transparent;
+  --press-in: transparent; --press-line: transparent;
+  --label: var(--muted); --label-h: var(--text);
+  height: auto; padding: calc(4 * var(--u)) 0; gap: calc(6 * var(--u));
+  text-decoration: underline; text-decoration-thickness: calc(1 * var(--u)); text-underline-offset: calc(4 * var(--u));
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+}
+.key.text::after { content: "→"; text-decoration: none; display: inline-block; transition: transform 120ms ease; }
+.key.text:active, .key.text.down { transform: none; }
+@media (hover: hover) { .key.text:hover::after { transform: translateX(calc(3 * var(--u))); } }
+.key .cap { letter-spacing: .14em; }
+/* on-screen pads: thumb-sized squares; the material still scales with --u */
+.cluster .key { height: auto; padding: 0; }
+.cluster .key svg { width: 40%; height: 40%; stroke-width: 2.4; }
 
 /* stage */
 .stage { grid-area: stage; display: grid; gap: 12px; min-height: 0;
@@ -145,7 +246,7 @@ body {
 .ov-title { font-family: var(--f-display); font-size: clamp(28px, 6vmin, 46px); letter-spacing: .08em; margin: 0; text-wrap: balance; }
 .ov-text { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 0; text-wrap: balance; }
 .ov-text strong { color: var(--text); font-family: var(--f-num); font-weight: 500; }
-.ov-btn { width: auto; min-width: 150px; height: 56px; padding-inline: 24px; font-size: 16px; letter-spacing: .2em; }
+.ov-btn { min-width: 150px; letter-spacing: .2em; }
 .seg { display: inline-grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 16px;
   background: rgba(0,0,0,.28); box-shadow: inset 0 1px 3px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.06); }
 .seg-btn { appearance: none; border: 0; cursor: pointer; min-width: 84px; height: 38px; border-radius: 12px;
@@ -213,7 +314,6 @@ body {
 }
 @media (max-width: 460px) {
   .tools { gap: 8px; }
-  .key.round { width: 40px; height: 40px; border-radius: 12px; }
   .wordmark { display: none; }
   .stage { grid-template-columns: 66px minmax(0, 1fr) 66px; gap: 8px; }
   .card { padding: 8px; border-radius: 14px; }
@@ -255,7 +355,7 @@ body {
           <div class="ov-inner">
             <h2 class="ov-title" id="ovTitle">金石方块</h2>
             <p class="ov-text" id="ovText">七种金属方块，填满一行即消除。</p>
-            <button class="key seal-key ov-btn" id="ovBtn">开始</button>
+            <button class="key seal-key lg ov-btn" id="ovBtn">开始</button>
             <div class="seg" role="group" aria-label="方块质感">
               <button class="seg-btn" data-theme="metal" aria-pressed="true"><span class="sw"></span>金石</button>
               <button class="seg-btn" data-theme="glass" aria-pressed="false"><span class="sw"></span>琉璃</button>
@@ -274,15 +374,15 @@ body {
 
   <div class="pad">
     <div class="cluster move">
-      <button class="key" data-act="left" aria-label="左移"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
-      <button class="key" data-act="right" aria-label="右移"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
-      <button class="key wide" data-act="down" aria-label="软降"><svg viewBox="0 0 24 24" style="width:22%;height:44%"><path d="M5 9l7 7 7-7"/></svg></button>
+      <button class="key lg" data-act="left" aria-label="左移"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="key lg" data-act="right" aria-label="右移"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+      <button class="key lg wide" data-act="down" aria-label="软降"><svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7"/></svg></button>
     </div>
     <div class="cluster act">
-      <button class="key metal" data-act="ccw" aria-label="逆时针旋转"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.34-5.66"/><path d="M4 4v5h5"/></svg></button>
-      <button class="key metal" data-act="cw" aria-label="顺时针旋转"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button>
-      <button class="key" data-act="hold" aria-label="暂存"><span class="cap">暂存</span></button>
-      <button class="key seal-key" data-act="drop" aria-label="直落"><svg viewBox="0 0 24 24"><path d="M6 4l6 6 6-6M6 11l6 6 6-6M5 21h14"/></svg></button>
+      <button class="key metal lg" data-act="ccw" aria-label="逆时针旋转"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.34-5.66"/><path d="M4 4v5h5"/></svg></button>
+      <button class="key metal lg" data-act="cw" aria-label="顺时针旋转"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button>
+      <button class="key lg" data-act="hold" aria-label="暂存"><span class="cap">暂存</span></button>
+      <button class="key seal-key lg" data-act="drop" aria-label="直落"><svg viewBox="0 0 24 24"><path d="M6 4l6 6 6-6M6 11l6 6 6-6M5 21h14"/></svg></button>
     </div>
   </div>
 </div>
